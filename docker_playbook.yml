@@ -1,0 +1,52 @@
+---
+
+- hosts: localhost
+
+  tasks:
+  - name: Create a data container
+    docker_container:
+      name: mydata
+      image: busybox
+      volumes:
+        - /data
+
+  - name: Create Nginx
+    docker_container:
+      name: mynginx
+      image: nginx
+      state: present
+      recreate: yes
+      exposed_ports:
+        - 80
+        - 443
+      published_ports:
+        - 80:80
+        - 443:443
+      volumes_from:
+        - mydata
+      detach: yes
+
+  - name: Build Flask
+    docker_image:
+      name: myflask
+      buildargs:
+        from: python:2.7
+        copy: app.py /app
+        workdir: /app
+        run: pip install flask
+        entrypoint: "python"
+        cmd: "app.py"
+
+  - name: Create Flask
+    docker_container:
+      name: myflask
+      image: python
+      state: present
+      recreate: yes
+      exposed_ports:
+        - 5000
+      published_ports:
+        - 5000:5000
+      volumes_from:
+        - mydata
+      detach: yes
